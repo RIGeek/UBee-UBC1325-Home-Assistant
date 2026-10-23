@@ -1,0 +1,12 @@
+{
+  "domain": "ubee_modem",
+  "name": "Ubee Cable Modem",
+  "codeowners": ["@RIGeek"],
+  "config_flow": true,
+  "documentation": "https://github.com/RIGeek/UBee-UBC1325-Home-Assistant",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/RIGeek/UBee-UBC1325-Home-Assistant/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

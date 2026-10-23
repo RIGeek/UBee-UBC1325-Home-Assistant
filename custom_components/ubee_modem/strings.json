@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ubee cable modem",
+        "description": "Enter the modem's address and web UI login. Leave username and password blank if the status page doesn't require a login.",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "status_path": "Status page path",
+          "use_ssl": "Use HTTPS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "The modem rejected the stored login. Enter the current credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Ubee cable modem",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "status_path": "Status page path",
+          "use_ssl": "Use HTTPS"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the modem.",
+      "invalid_auth": "The modem rejected the login, or requires one and none was given.",
+      "unexpected_page": "Reached the modem but the status page could not be parsed. Check the status page path.",
+      "unknown": "Unexpected error; check the Home Assistant log."
+    },
+    "abort": {
+      "already_configured": "This modem is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "uncorrectable_threshold": "Uncorrectable errors alert threshold (codewords/min)"
+        }
+      }
+    }
+  }
+}
