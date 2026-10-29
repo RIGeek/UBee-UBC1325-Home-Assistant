@@ -23,7 +23,7 @@ Home Assistant must be able to reach `192.168.100.1`. If HA sits behind your own
 
 Starlink dishes (and some other modems) also answer at `192.168.100.1`. When your firewall fails over to the backup WAN, the integration will reach *that* device instead of the Ubee. It recognises this: *Reachable* turns **off** with `other_device_answering: true`, polling continues, and everything comes back on its own when the cable link is primary again. No re-authentication is triggered. If Home Assistant restarts while failed over, setup simply retries until the Ubee answers.
 
-If you'd rather reach the Ubee even while failed over, pin it on the firewall: add a host route for `192.168.100.1/32` via the cable WAN interface (in Sophos, a static/SD-WAN route with that interface as the gateway). The trade-off is that the Starlink status page then isn't reachable at that address.
+You don't need any firewall changes for this. Gateway routes and NAT rules aimed at the cable link generally won't help in failover (active/backup) mode, because the firewall won't send traffic through a gateway it considers down or standby. If you want the Ubee reachable regardless of which WAN is active, the usual approach is to give the firewall's cable-WAN interface a secondary (alias) address such as `192.168.100.2/24`. That makes `192.168.100.0/24` a directly connected network on the cable port, independent of gateways and failover. You may also need a SNAT/masquerade rule so Home Assistant's traffic leaves with that alias as its source. Whether your firewall allows an alias on a DHCP-addressed WAN interface varies by product and version. The trade-off is that the backup device's own page at `192.168.100.1` is no longer reachable while the alias exists.
 
 ## Configuration
 
