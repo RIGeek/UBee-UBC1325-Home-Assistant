@@ -19,6 +19,12 @@ Manual install: copy `custom_components/ubee_modem` into your `config/custom_com
 
 Home Assistant must be able to reach `192.168.100.1`. If HA sits behind your own router/firewall, that usually works as long as the firewall routes 192.168.100.0/24 out the WAN port (most do). If not, add a static route or an outbound NAT rule for it.
 
+### Dual-WAN / failover setups (e.g. Starlink backup)
+
+Starlink dishes (and some other modems) also answer at `192.168.100.1`. When your firewall fails over to the backup WAN, the integration will reach *that* device instead of the Ubee. It recognises this: *Reachable* turns **off** with `other_device_answering: true`, polling continues, and everything comes back on its own when the cable link is primary again. No re-authentication is triggered. If Home Assistant restarts while failed over, setup simply retries until the Ubee answers.
+
+If you'd rather reach the Ubee even while failed over, pin it on the firewall: add a host route for `192.168.100.1/32` via the cable WAN interface (in Sophos, a static/SD-WAN route with that interface as the gateway). The trade-off is that the Starlink status page then isn't reachable at that address.
+
 ## Configuration
 
 | Field | Default | Notes |
@@ -78,7 +84,7 @@ Per channel (created automatically as channels appear; keyed by **channel ID**, 
 
 | Event | When | Data |
 |---|---|---|
-| `ubee_modem_unreachable` | First failed poll after a good one | `reason` |
+| `ubee_modem_unreachable` | First failed poll after a good one | `reason`, `other_device_answering` |
 | `ubee_modem_recovered` | First good poll after failures | `down_seconds` |
 | `ubee_modem_counters_reset` | Codeword totals went backwards (modem rebooted / re-registered) | previous/current totals |
 

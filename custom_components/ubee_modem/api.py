@@ -22,6 +22,15 @@ class UbeeConnectionError(UbeeError):
     """Modem could not be reached."""
 
 
+class UbeeOtherDeviceError(UbeeConnectionError):
+    """Something other than the Ubee modem answered at the modem address.
+
+    Typical cause: a dual-WAN firewall failed over to a backup link whose
+    modem/dish also lives at 192.168.100.1 (e.g. Starlink). Treated as a
+    temporary outage, never as an authentication problem.
+    """
+
+
 class UbeeAuthError(UbeeError):
     """Authentication failed or is required."""
 
@@ -152,7 +161,14 @@ class UbeeModemClient:
                 raise UbeeAuthError(f"Modem rejected HTTP {self.auth_method} credentials")
 
         if not self._is_status_page(text):
-            # Probably redirected to (or served) a login page.
+            if find_login_form(text) is None:
+                # Not the status page and not a login form: another device
+                # (e.g. a Starlink dish after WAN failover) is answering.
+                self.last_html = text
+                raise UbeeOtherDeviceError(
+                    f"A device other than the Ubee modem answered at {self._status_url} "
+                    f"(HTTP {status}); WAN failover?"
+                )
             await self._form_login(text, final_url)
             status, text, final_url = await self._get(self._status_url)
             if not self._is_status_page(text):

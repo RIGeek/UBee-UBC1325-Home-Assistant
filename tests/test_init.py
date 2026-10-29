@@ -199,3 +199,73 @@ async def test_diagnostics(hass: HomeAssistant, aioclient_mock, status_html):
     assert diag["entry"][CONF_PASSWORD] == "**REDACTED**"
     assert diag["status"]["ipv4"] == "**REDACTED**"
     assert len(diag["status"]["downstream"]) == 26
+
+
+STARLINK_PAGE = """<!doctype html><html><head><title>Starlink</title></head>
+<body><div id="root"></div><script src="/static/js/main.js"></script></body></html>"""
+
+
+async def test_wan_failover_to_starlink_recovers(hass: HomeAssistant, aioclient_mock, status_html):
+    """Failover: Starlink (no auth) answers at 192.168.100.1, then Ubee returns."""
+    mode = {"device": "ubee", "challenged": False}
+
+    async def side(method, url, data):
+        if mode["device"] == "starlink":
+            return AiohttpClientMockResponse(method, url, text=STARLINK_PAGE)
+        if mode["device"] == "starlink404":
+            return AiohttpClientMockResponse(method, url, status=404, text="Not Found")
+        # Ubee pop-up login: first request is challenged.
+        if not mode["challenged"]:
+            mode["challenged"] = True
+            return AiohttpClientMockResponse(method, url, status=401, text="401")
+        return AiohttpClientMockResponse(method, url, text=status_html)
+
+    aioclient_mock.get(URL, side_effect=side)
+    entry = MockConfigEntry(domain=DOMAIN, data=DATA)
+    await _setup(hass, entry)
+    coord = entry.runtime_data
+    assert entry.state is config_entries.ConfigEntryState.LOADED
+    assert coord.client.auth_method == "basic"
+
+    for dev in ("starlink", "starlink404"):
+        mode["device"] = dev
+        await coord.async_refresh()
+        await hass.async_block_till_done()
+        reach = hass.states.get("binary_sensor.ubee_cable_modem_reachable")
+        assert reach.state == "off"
+        assert reach.attributes["other_device_answering"] is True
+        # Crucially: no reauth flow and the entry stays loaded.
+        assert not any(
+            f["context"]["source"] == "reauth" for f in hass.config_entries.flow.async_progress()
+        )
+        assert entry.state is config_entries.ConfigEntryState.LOADED
+
+    mode["device"] = "ubee"
+    await coord.async_refresh()
+    await hass.async_block_till_done()
+    reach = hass.states.get("binary_sensor.ubee_cable_modem_reachable")
+    assert reach.state == "on"
+    assert reach.attributes["other_device_answering"] is False
+    assert hass.states.get("sensor.ubee_cable_modem_ds_ch_20_snr").state == "36.2"
+
+
+async def test_setup_during_failover_retries_not_reauth(hass: HomeAssistant, aioclient_mock):
+    """HA restarting while on Starlink should retry setup, not demand credentials."""
+    aioclient_mock.get(URL, text=STARLINK_PAGE)
+    entry = MockConfigEntry(domain=DOMAIN, data=DATA)
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is config_entries.ConfigEntryState.SETUP_RETRY
+    assert not any(
+        f["context"]["source"] == "reauth" for f in hass.config_entries.flow.async_progress()
+    )
+
+
+async def test_config_flow_other_device(hass: HomeAssistant, aioclient_mock):
+    aioclient_mock.get(URL, text=STARLINK_PAGE)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], DATA)
+    assert result["errors"] == {"base": "other_device"}

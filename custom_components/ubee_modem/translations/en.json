@@ -34,6 +34,7 @@
     "error": {
       "cannot_connect": "Could not reach the modem.",
       "invalid_auth": "The modem rejected the login, or requires one and none was given.",
+      "other_device": "Something other than the Ubee modem answered at this address (is the firewall failed over to a backup WAN?). Try again once the cable connection is primary.",
       "unexpected_page": "Reached the modem but the status page could not be parsed. Check the status page path.",
       "unknown": "Unexpected error; check the Home Assistant log."
     },

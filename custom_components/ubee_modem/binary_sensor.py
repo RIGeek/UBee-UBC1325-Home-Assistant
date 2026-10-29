@@ -58,6 +58,8 @@ class ModemReachableSensor(UbeeEntity, BinarySensorEntity):
             "unreachable_count": c.unreachable_count,
             "last_unreachable": c.last_unreachable.isoformat() if c.last_unreachable else None,
             "auth_method": c.client.auth_method,
+            "other_device_answering": c.other_device_answering,
+            "last_error": c.last_error,
         }
 
 

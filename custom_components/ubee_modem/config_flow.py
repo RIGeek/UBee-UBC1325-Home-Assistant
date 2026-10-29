@@ -19,7 +19,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from . import build_client
-from .api import UbeeAuthError, UbeeConnectionError, UbeeParseError
+from .api import UbeeAuthError, UbeeConnectionError, UbeeOtherDeviceError, UbeeParseError
 from .const import (
     CONF_STATUS_PATH,
     CONF_UNCORRECTABLE_THRESHOLD,
@@ -60,6 +60,8 @@ async def _validate(hass, data: dict[str, Any]) -> dict[str, str]:
         status = await client.async_get_status()
     except UbeeAuthError:
         return {"base": "invalid_auth"}
+    except UbeeOtherDeviceError:
+        return {"base": "other_device"}
     except UbeeConnectionError:
         return {"base": "cannot_connect"}
     except UbeeParseError:

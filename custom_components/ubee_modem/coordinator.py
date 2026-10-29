@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .api import UbeeAuthError, UbeeError, UbeeModemClient
+from .api import UbeeAuthError, UbeeError, UbeeModemClient, UbeeOtherDeviceError
 from .const import DOMAIN, EVENT_COUNTERS_RESET, EVENT_RECOVERED, EVENT_UNREACHABLE
 from .parser import DownstreamChannel, ModemStatus, UpstreamChannel
 
@@ -66,6 +66,8 @@ class UbeeCoordinator(DataUpdateCoordinator[ModemData]):
         self.unreachable_since: datetime | None = None
         self.last_unreachable: datetime | None = None
         self.unreachable_count = 0
+        self.other_device_answering = False
+        self.last_error: str | None = None
 
     async def _async_update_data(self) -> ModemData:
         try:
@@ -73,9 +75,13 @@ class UbeeCoordinator(DataUpdateCoordinator[ModemData]):
         except UbeeAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except UbeeError as err:
+            self.other_device_answering = isinstance(err, UbeeOtherDeviceError)
+            self.last_error = str(err)
             self._mark_unreachable(str(err))
             raise UpdateFailed(str(err)) from err
 
+        self.other_device_answering = False
+        self.last_error = None
         self._mark_reachable()
         now_mono = time.monotonic()
         now = dt_util.utcnow()
@@ -148,7 +154,11 @@ class UbeeCoordinator(DataUpdateCoordinator[ModemData]):
             self.unreachable_count += 1
             self.hass.bus.async_fire(
                 EVENT_UNREACHABLE,
-                {"entry_id": self.config_entry.entry_id, "reason": reason},
+                {
+                    "entry_id": self.config_entry.entry_id,
+                    "reason": reason,
+                    "other_device_answering": self.other_device_answering,
+                },
             )
 
     def _mark_reachable(self) -> None:
